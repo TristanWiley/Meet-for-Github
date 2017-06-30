@@ -8,18 +8,22 @@ import com.koushikdutta.ion.Ion
 
 
 class MainActivity : AppCompatActivity() {
-    private val GITHUB_CLIENT_ID = applicationContext.getString(R.string.GITHUB_CLIENT_ID)
-    private val GITHUB_CLIENT_SECRET = applicationContext.getString(R.string.GITHUB_CLIENT_SECRET)
+    lateinit private var GITHUB_CLIENT_ID: String
+    lateinit private var GITHUB_CLIENT_SECRET: String
+    val REPO_NAME: String = "Meet-For-Github-Profile"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
         val token = prefs.getString("gh_token", "")
+
+        GITHUB_CLIENT_ID = applicationContext.getString(R.string.GITHUB_CLIENT_ID)
+        GITHUB_CLIENT_SECRET = applicationContext.getString(R.string.GITHUB_CLIENT_SECRET)
         Log.wtf("TOKEN", token)
 
         if (token != "" && isValidToken(token)) {
-            if (isFirstTime()) {
+            if (isFirstTime(token)) {
                 //TODO go to register fragment
             } else {
                 //TODO go to dating fragment
@@ -33,17 +37,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun isValidToken(token: String): Boolean {
-        val test = Ion.with(applicationContext)
+        val response = Ion.with(applicationContext)
                 .load("GET", "https://api.github.com/applications/$GITHUB_CLIENT_ID/tokens/$token")
                 .setHeader("Accept", "application/json")
                 .basicAuthentication(GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET)
                 .asJsonObject()
                 .get()
-        return !test.getAsJsonObject("app").isJsonNull
+        return !response.getAsJsonObject("app").isJsonNull
     }
 
-    fun isFirstTime(): Boolean {
+    fun isFirstTime(token: String): Boolean {
+        val response = Ion.with(applicationContext)
+                .load("https://api.github.com/repos/${getName(token)}/$REPO_NAME")
+                .asJsonObject()
+                .get()
+        return !response.get("id").isJsonNull
+    }
 
-        return true
+    fun getName(token: String): String {
+        val response = Ion.with(applicationContext)
+                .load("https://api.github.com/user")
+                .setHeader("Authorization", "token $token")
+                .asJsonObject()
+                .get()
+        return response.get("login").asString
     }
 }
